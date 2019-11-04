@@ -17,6 +17,7 @@ The Codec can be used to decode both key and value when using [confluent-kafka-g
 
 import (
     "github.com/confluentinc/confluent-kafka-go/kafka"
+	schemaregistry "github.com/lensesio/schema-registry"
     "github.com/timvw/gokafkaavro"
 )
 
@@ -29,9 +30,16 @@ func DecodeValue(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, 
 func DecodeKey(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
 	return c.Decode(*msg.TopicPartition.Topic, true, msg.Key)
 }
-
+	
 schemaRegistryURL := "http://localhost:8081"
-avroCodec, err := gokafkaavro.NewCodec(schemaRegistryURL)
+
+client, err := schemaregistry.NewClient(schemaRegistryURL)
+if err != nil {
+    return
+}
+
+cachedSchemaRegistryClient := gokafkaavro.NewCachedSchemaRegistryClient(client)
+avroCodec := gokafkaavro.NewCodec(cachedSchemaRegistryClient)
 
 var msg kafka.Message
 native, _, err := DecodeValue(avroCodec, msg)
