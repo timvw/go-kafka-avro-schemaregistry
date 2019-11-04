@@ -21,17 +21,16 @@ func NewAvroCodec(schemaRegistryClient *schemaregistry.Client) (*KafkaAvroCodec)
 	return &KafkaAvroCodec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
 }
 
-// DecodeValue decodes the value from the given kafka message into a go map
+// DecodeValue decodes the value from the given kafka message
 func (c *KafkaAvroCodec) DecodeValue(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
 	return c.decode(*msg.TopicPartition.Topic, false, msg.Value)
 }
 
-// DecodeKey decodes the key from the given message into a go map
+// DecodeKey decodes the key from the given message
 func (c *KafkaAvroCodec) DecodeKey(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
 	return c.decode(*msg.TopicPartition.Topic, true, msg.Key)
 }
 
-// subjectVersionID represents a tuple of a subject and a specific version
 type subjectVersionID struct {
 	subject   string
 	versionID int
