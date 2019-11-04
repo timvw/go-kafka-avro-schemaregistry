@@ -1,6 +1,7 @@
 package main
 
 import "testing"
+import "kafkaavro"
 
 func TestGetSchemaID(t *testing.T) {
 
@@ -15,7 +16,7 @@ func TestGetSchemaID(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if got := getSchemaID(test.input); got != test.want {
+		if got := Codec.getSchemaID(test.input); got != test.want {
 			t.Errorf("readUint32(%v) returned %d, want %d", test.input, got, test.want)
 		}
 	}

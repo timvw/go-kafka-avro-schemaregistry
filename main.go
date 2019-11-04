@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/timvw/go-kafka-avro-schemaregistry/kafkaavro"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,7 +24,7 @@ func main() {
 
 	schemaRegistryURL := "http://localhost:8081"
 
-	avroCodec, err := NewAvroCodec(schemaRegistryURL)
+	avroCodec, err := kafkaavro.NewCodec(schemaRegistryURL)
 	if err != nil {
 		panic(err)
 	}

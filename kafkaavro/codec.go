@@ -1,4 +1,4 @@
-package main
+package kafkaavro
 
 import (
 	"encoding/binary"
@@ -9,14 +9,14 @@ import (
 	"github.com/linkedin/goavro"
 )
 
-// KafkaAvroCodec decodes kafka avro messages using a schema registry
-type KafkaAvroCodec struct {
+// Codec decodes kafka avro messages using a schema registry
+type Codec struct {
 	schemaRegistryClient *cachedSchemaRegistryClient
 	codecCache           map[subjectVersionID]*goavro.Codec
 }
 
-// NewAvroCodec returns a new instance of avrocodec
-func NewAvroCodec(schemaRegistryURL string, options ...schemaregistry.Option) (codec *KafkaAvroCodec, err error) {
+// NewCodec returns a new instance of Codec
+func NewCodec(schemaRegistryURL string, options ...schemaregistry.Option) (codec *Codec, err error) {
 
 	client, err := schemaregistry.NewClient(schemaRegistryURL, options...)
 	if(err != nil) {
@@ -24,17 +24,17 @@ func NewAvroCodec(schemaRegistryURL string, options ...schemaregistry.Option) (c
 	}
 
 	cachedSchemaRegistryClient := newCachedSchemaRegistryClient(client)
-	codec = &KafkaAvroCodec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
+	codec = &Codec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
 	return
 }
 
 // DecodeValue decodes the value from the given kafka message
-func (c *KafkaAvroCodec) DecodeValue(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
+func (c *Codec) DecodeValue(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
 	return c.decode(*msg.TopicPartition.Topic, false, msg.Value)
 }
 
 // DecodeKey decodes the key from the given message
-func (c *KafkaAvroCodec) DecodeKey(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
+func (c *Codec) DecodeKey(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
 	return c.decode(*msg.TopicPartition.Topic, true, msg.Key)
 }
 
@@ -43,7 +43,7 @@ type subjectVersionID struct {
 	versionID int
 }
 
-func (c *KafkaAvroCodec) decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
+func (c *Codec) decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
 
 	subjectVersion, err := extractSubjectAndVersionFromData(topic, isKey, data)
 	if err != nil {
@@ -85,7 +85,7 @@ func getSchemaID(data []byte) int {
 	return int(binary.BigEndian.Uint32(data))
 }
 
-func (c *KafkaAvroCodec) getCodecFor(subjectVersion subjectVersionID) (codec *goavro.Codec, err error) {
+func (c *Codec) getCodecFor(subjectVersion subjectVersionID) (codec *goavro.Codec, err error) {
 
 	codec, ok := c.codecCache[subjectVersion]
 
