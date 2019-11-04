@@ -5,12 +5,12 @@ Gokafkaavro is a library that decodes Avro data.
 
 ## Description
 
-* Leverages [schema-registry](github.com/lensesio/schema-registry) client and [goavro](github.com/linkedin/goavro) 
+* Leverages [schema-registry](https://github.com/lensesio/schema-registry) client and [goavro](https://github.com/linkedin/goavro) 
 to decode binary Avro data.
  
 ## Usage
 
-The Codec can be used to decode both key and value when using [confluent-kafka-go](github.com/confluentinc/confluent-kafka-go/kafka):
+The Codec can be used to decode both key and value when using [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go):
 
 
 ```go
