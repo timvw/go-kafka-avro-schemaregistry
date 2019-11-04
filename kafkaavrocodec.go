@@ -16,9 +16,16 @@ type KafkaAvroCodec struct {
 }
 
 // NewAvroCodec returns a new instance of avrocodec
-func NewAvroCodec(schemaRegistryClient *schemaregistry.Client) (*KafkaAvroCodec) {
-	cachedSchemaRegistryClient := newCachedSchemaRegistryClient(schemaRegistryClient)
-	return &KafkaAvroCodec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
+func NewAvroCodec(schemaRegistryURL string, options ...schemaregistry.Option) (codec *KafkaAvroCodec, err error) {
+
+	client, err := schemaregistry.NewClient(schemaRegistryURL, options...)
+	if(err != nil) {
+		return
+	}
+
+	cachedSchemaRegistryClient := newCachedSchemaRegistryClient(client)
+	codec = &KafkaAvroCodec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
+	return
 }
 
 // DecodeValue decodes the value from the given kafka message

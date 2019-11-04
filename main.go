@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	schemaregistry "github.com/lensesio/schema-registry"
 )
 
 func main() {
@@ -23,11 +22,11 @@ func main() {
 	}
 
 	schemaRegistryURL := "http://localhost:8081"
-	schemaRegistryClient, err := schemaregistry.NewClient(schemaRegistryURL)
+
+	avroCodec, err := NewAvroCodec(schemaRegistryURL)
 	if err != nil {
 		panic(err)
 	}
-	avroCodec := NewAvroCodec(schemaRegistryClient)
 
 	kafkaConsumer, err := kafka.NewConsumer(kafkaConfig)
 	if err != nil {
