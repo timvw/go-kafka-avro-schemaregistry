@@ -8,9 +8,33 @@ import (
 	"syscall"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	schemaregistry "github.com/lensesio/schema-registry"
 	"github.com/linkedin/goavro"
+	schemaregistry "github.com/lensesio/schema-registry"
 )
+
+type schemaCacheKey struct {
+	subject   string
+	versionID int
+}
+
+func getSchemaBySubject(subject string, versionID int, schemaCache map[schemaCacheKey]string, client *schemaregistry.Client) (schema string, err error) {
+
+	key := schemaCacheKey{subject, versionID}
+
+	schema, ok := schemaCache[key]
+
+	if !ok {
+		var avroSchema schemaregistry.Schema
+		avroSchema, err = client.GetSchemaBySubject(subject, versionID)
+		if err != nil {
+			return
+		}
+		schema = avroSchema.Schema
+		schemaCache[key] = schema
+	}
+
+	return
+}
 
 func getSchemaID(data []byte) int {
 	return int(binary.BigEndian.Uint32(data))
@@ -33,8 +57,8 @@ func main() {
 	}
 
 	schemaRegistryURL := "http://localhost:8081"
-
 	schemaRegistryClient, err := schemaregistry.NewClient(schemaRegistryURL)
+	schemaCache := make(map[schemaCacheKey]string)
 
 	if err != nil {
 		panic(err)
@@ -78,7 +102,7 @@ func main() {
 					schemaID := getSchemaID(e.Value[1:5])
 					subject := getSubject(*e.TopicPartition.Topic)
 
-					schema, err := schemaRegistryClient.GetSchemaBySubject(subject, schemaID)
+					schema, err := getSchemaBySubject(subject, schemaID, schemaCache, schemaRegistryClient)
 
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error: could not find schema for %v", err)
@@ -86,7 +110,7 @@ func main() {
 
 					data := e.Value[5:]
 
-					codec, err := goavro.NewCodec(schema.Schema)
+					codec, err := goavro.NewCodec(schema)
 
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
