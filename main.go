@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,6 +16,34 @@ import (
 type schemaCacheKey struct {
 	subject   string
 	versionID int
+}
+
+func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (subject string, versionID int, err error) {
+
+	magicByte := data[0]
+
+	if magicByte != 0 {
+		err = errors.New("Unknown magic byte")
+		return
+	}
+
+	if isKey {
+		subject = fmt.Sprintf("%v-key", topic)
+	} else {
+		subject = fmt.Sprintf("%v-value", topic)
+	}
+
+	versionID = getSchemaID(data[1:5])
+
+	return
+}
+
+func extractSubjectAndVersionFromValue(message *kafka.Message) (subject string, versionID int, err error) {
+	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Value)
+}
+
+func extractSubjectAndVersionFromKey(message *kafka.Message) (subject string, versionID int, err error) {
+	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Key)
 }
 
 func getSchemaBySubject(subject string, versionID int, schemaCache map[schemaCacheKey]string, client *schemaregistry.Client) (schema string, err error) {
@@ -93,36 +122,33 @@ func main() {
 
 			case *kafka.Message:
 
-				magicByte := e.Value[0]
+				subject, versionID, err := extractSubjectAndVersionFromValue(e)
 
-				if magicByte != 0 {
-					fmt.Fprintf(os.Stderr, "Error: Unknown macic byte!")
-				} else {
-
-					schemaID := getSchemaID(e.Value[1:5])
-					subject := getSubject(*e.TopicPartition.Topic)
-
-					schema, err := getSchemaBySubject(subject, schemaID, schemaCache, schemaRegistryClient)
-
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Error: could not find schema for %v", err)
-					}
-
-					data := e.Value[5:]
-
-					codec, err := goavro.NewCodec(schema)
-
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
-					}
-					native, _, err := codec.NativeFromBinary(data)
-
-					if err != nil {
-						fmt.Println(err)
-					}
-
-					fmt.Printf("Message on %s: %s\n", e.TopicPartition, native)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: Could not extract subject and version from value %v, %v", e, err)
 				}
+
+				schema, err := getSchemaBySubject(subject, versionID, schemaCache, schemaRegistryClient)
+
+
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: could not find schema for %v", err)
+				}
+
+				data := e.Value[5:]
+
+				codec, err := goavro.NewCodec(schema)
+
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
+				}
+				native, _, err := codec.NativeFromBinary(data)
+
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				fmt.Printf("Message on %s: %s\n", e.TopicPartition, native)
 
 			case kafka.Error:
 				// Errors should generally be considered
