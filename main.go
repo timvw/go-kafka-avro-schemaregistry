@@ -48,26 +48,6 @@ func extractSubjectAndVersionFromKey(message *kafka.Message) (key SubjectVersion
 	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Key)
 }
 
-func getCodecBySubject(key SubjectVersionID, codecCache map[SubjectVersionID]*goavro.Codec, csrc SchemaRegistryClient) (codec *goavro.Codec, err error) {
-
-	codec, ok := codecCache[key]
-
-	if !ok {
-		var schema string
-		schema, err = csrc.GetSchemaFor(key)
-		if err != nil {
-			return
-		}
-		codec, err = goavro.NewCodec(schema)
-		if err != nil {
-			return
-		}
-		codecCache[key] = codec
-	}
-
-	return
-}
-
 func getSchemaID(data []byte) int {
 	return int(binary.BigEndian.Uint32(data))
 }
@@ -90,8 +70,7 @@ func main() {
 		panic(err)
 	}
 	cachedSchemaRegistryClient := NewCachedSchemaRegistryClient(schemaRegistryClient)
-
-	codecCache := make(map[SubjectVersionID]*goavro.Codec)
+	avroCodec := NewAvroCodec(cachedSchemaRegistryClient)
 
 	c, err := kafka.NewConsumer(kafkaConfig)
 
@@ -128,7 +107,7 @@ func main() {
 					fmt.Fprintf(os.Stderr, "Error: Could not extract subject and version from value %v, %v", e, err)
 				}
 
-				codec, err := getCodecBySubject(cacheKey, codecCache, cachedSchemaRegistryClient)
+				codec, err := avroCodec.GetCodecFor(cacheKey)
 
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
