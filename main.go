@@ -100,26 +100,13 @@ func main() {
 
 			case *kafka.Message:
 
-				cacheKey, err := extractSubjectAndVersionFromValue(e)
-
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: Could not extract subject and version from value %v, %v", e, err)
-				}
-
-				codec, err := avroCodec.GetCodecFor(cacheKey)
-
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
-				}
-
-				data := e.Value[5:]
-				native, _, err := codec.NativeFromBinary(data)
+				native, _, err := avroCodec.DecodeValue(e)
 
 				if err != nil {
 					fmt.Println(err)
+				} else {
+					fmt.Printf("Message on %s: %s\n", e.TopicPartition, native)
 				}
-
-				fmt.Printf("Message on %s: %s\n", e.TopicPartition, native)
 
 			case kafka.Error:
 				// Errors should generally be considered
