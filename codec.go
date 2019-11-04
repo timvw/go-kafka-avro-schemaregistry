@@ -9,13 +9,14 @@ import (
 
 // Codec decodes kafka avro messages using a schema registry
 type Codec struct {
-	client     schemaRegistryClient
-	codecCache map[subjectVersionID]*goavro.Codec
+	client              schemaRegistryClient
+	codecCache          map[subjectVersionID]*goavro.Codec
+	subjectNameStrategy func(topic string, isKey bool)(string)
 }
 
 // NewCodec returns a new instance of Codec
 func NewCodec(client schemaRegistryClient) (*Codec) {
-	return &Codec{client, make(map[subjectVersionID]*goavro.Codec)}
+	return &Codec{client, make(map[subjectVersionID]*goavro.Codec), getTopicNameStrategy}
 }
 
 // Decode builds a native go interface from the given avro data
@@ -34,6 +35,11 @@ func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{
 	return codec.NativeFromBinary(data[5:])
 }
 
+// SubjectNameStrategy represents the actual method to resolve a subject name
+type SubjectNameStrategy interface {
+	GetSubjectName(topic string, isKey bool, data []byte)
+}
+
 type subjectVersionID struct {
 	subject   string
 	versionID int
@@ -48,13 +54,13 @@ func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (ke
 		return
 	}
 
-	subject := getSubject(topic, isKey)
+	subject := getTopicNameStrategy(topic, isKey)
 	versionID := getSchemaID(data[1:5])
 	key = subjectVersionID{subject, versionID}
 	return
 }
 
-func getSubject(topic string, isKey bool) (subject string) {
+func getTopicNameStrategy(topic string, isKey bool) (subject string) {
 	if isKey {
 		return fmt.Sprintf("%v-key", topic)
 	}
