@@ -1,4 +1,4 @@
-package kafkaavro
+package main
 
 import (
 	"encoding/binary"

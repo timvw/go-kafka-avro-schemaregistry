@@ -1,7 +1,6 @@
 package main
 
 import "testing"
-import "kafkaavro"
 
 func TestGetSchemaID(t *testing.T) {
 
