@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/timvw/gokafkaavro"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,7 +24,7 @@ func main() {
 
 	schemaRegistryURL := "http://localhost:8081"
 
-	avroCodec, err := NewCodec(schemaRegistryURL)
+	avroCodec, err := gokafkaavro.NewCodec(schemaRegistryURL)
 	if err != nil {
 		panic(err)
 	}

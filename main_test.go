@@ -1,4 +1,4 @@
-package main
+package gokafkaavro
 
 import "testing"
 
@@ -15,7 +15,7 @@ func TestGetSchemaID(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		if got := Codec.getSchemaID(test.input); got != test.want {
+		if got := getSchemaID(test.input); got != test.want {
 			t.Errorf("readUint32(%v) returned %d, want %d", test.input, got, test.want)
 		}
 	}
