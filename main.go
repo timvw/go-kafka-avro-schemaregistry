@@ -13,12 +13,12 @@ import (
 	schemaregistry "github.com/lensesio/schema-registry"
 )
 
-type schemaCacheKey struct {
+type subjectVersionID struct {
 	subject   string
 	versionID int
 }
 
-func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (subject string, versionID int, err error) {
+func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (key subjectVersionID, err error) {
 
 	magicByte := data[0]
 
@@ -27,39 +27,59 @@ func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (su
 		return
 	}
 
+	var subject string
 	if isKey {
 		subject = fmt.Sprintf("%v-key", topic)
 	} else {
 		subject = fmt.Sprintf("%v-value", topic)
 	}
 
-	versionID = getSchemaID(data[1:5])
+	versionID := getSchemaID(data[1:5])
 
+	key = subjectVersionID{subject, versionID}
 	return
 }
 
-func extractSubjectAndVersionFromValue(message *kafka.Message) (subject string, versionID int, err error) {
+func extractSubjectAndVersionFromValue(message *kafka.Message) (key subjectVersionID, err error) {
 	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Value)
 }
 
-func extractSubjectAndVersionFromKey(message *kafka.Message) (subject string, versionID int, err error) {
+func extractSubjectAndVersionFromKey(message *kafka.Message) (key subjectVersionID, err error) {
 	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Key)
 }
 
-func getSchemaBySubject(subject string, versionID int, schemaCache map[schemaCacheKey]string, client *schemaregistry.Client) (schema string, err error) {
-
-	key := schemaCacheKey{subject, versionID}
+func getSchemaBySubject(key subjectVersionID, schemaCache map[subjectVersionID]string, client *schemaregistry.Client) (schema string, err error) {
 
 	schema, ok := schemaCache[key]
 
 	if !ok {
 		var avroSchema schemaregistry.Schema
-		avroSchema, err = client.GetSchemaBySubject(subject, versionID)
+		avroSchema, err = client.GetSchemaBySubject(key.subject, key.versionID)
 		if err != nil {
 			return
 		}
 		schema = avroSchema.Schema
 		schemaCache[key] = schema
+	}
+
+	return
+}
+
+func getCodecBySubject(key subjectVersionID, codecCache map[subjectVersionID]*goavro.Codec, schemaCache map[subjectVersionID]string, client *schemaregistry.Client) (codec *goavro.Codec, err error) {
+
+	codec, ok := codecCache[key]
+
+	if !ok {
+		var schema string
+		schema, err = getSchemaBySubject(key, schemaCache, client)
+		if err != nil {
+			return
+		}
+		codec, err = goavro.NewCodec(schema)
+		if err != nil {
+			return
+		}
+		codecCache[key] = codec
 	}
 
 	return
@@ -87,7 +107,8 @@ func main() {
 
 	schemaRegistryURL := "http://localhost:8081"
 	schemaRegistryClient, err := schemaregistry.NewClient(schemaRegistryURL)
-	schemaCache := make(map[schemaCacheKey]string)
+	schemaCache := make(map[subjectVersionID]string)
+	codecCache := make(map[subjectVersionID]*goavro.Codec)
 
 	if err != nil {
 		panic(err)
@@ -122,26 +143,19 @@ func main() {
 
 			case *kafka.Message:
 
-				subject, versionID, err := extractSubjectAndVersionFromValue(e)
+				cacheKey, err := extractSubjectAndVersionFromValue(e)
 
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: Could not extract subject and version from value %v, %v", e, err)
 				}
 
-				schema, err := getSchemaBySubject(subject, versionID, schemaCache, schemaRegistryClient)
-
-
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: could not find schema for %v", err)
-				}
-
-				data := e.Value[5:]
-
-				codec, err := goavro.NewCodec(schema)
+				codec, err := getCodecBySubject(cacheKey, codecCache, schemaCache, schemaRegistryClient)
 
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: could not create codec %v", err)
 				}
+
+				data := e.Value[5:]
 				native, _, err := codec.NativeFromBinary(data)
 
 				if err != nil {
