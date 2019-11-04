@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/linkedin/goavro"
 	schemaregistry "github.com/lensesio/schema-registry"
 )
 
