@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,45 +9,6 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	schemaregistry "github.com/lensesio/schema-registry"
 )
-
-type SubjectVersionID struct {
-	subject   string
-	versionID int
-}
-
-func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (key SubjectVersionID, err error) {
-
-	magicByte := data[0]
-
-	if magicByte != 0 {
-		err = errors.New("Unknown magic byte")
-		return
-	}
-
-	var subject string
-	if isKey {
-		subject = fmt.Sprintf("%v-key", topic)
-	} else {
-		subject = fmt.Sprintf("%v-value", topic)
-	}
-
-	versionID := getSchemaID(data[1:5])
-
-	key = SubjectVersionID{subject, versionID}
-	return
-}
-
-func extractSubjectAndVersionFromValue(message *kafka.Message) (key SubjectVersionID, err error) {
-	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Value)
-}
-
-func extractSubjectAndVersionFromKey(message *kafka.Message) (key SubjectVersionID, err error) {
-	return extractSubjectAndVersionFromData(*message.TopicPartition.Topic, false, message.Key)
-}
-
-func getSchemaID(data []byte) int {
-	return int(binary.BigEndian.Uint32(data))
-}
 
 func main() {
 
@@ -68,16 +27,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cachedSchemaRegistryClient := NewCachedSchemaRegistryClient(schemaRegistryClient)
-	avroCodec := NewAvroCodec(cachedSchemaRegistryClient)
+	avroCodec := NewAvroCodec(schemaRegistryClient)
 
-	c, err := kafka.NewConsumer(kafkaConfig)
-
+	kafkaConsumer, err := kafka.NewConsumer(kafkaConfig)
 	if err != nil {
 		panic(err)
 	}
 
-	c.SubscribeTopics([]string{"test"}, nil)
+	kafkaConsumer.SubscribeTopics([]string{"test"}, nil)
 
 	run := true
 
@@ -91,7 +48,7 @@ func main() {
 
 		default:
 
-			ev := c.Poll(100)
+			ev := kafkaConsumer.Poll(100)
 			if ev == nil {
 				continue
 			}
@@ -127,6 +84,6 @@ func main() {
 	}
 
 	fmt.Printf("Closing consumer\n")
-	c.Close()
+	kafkaConsumer.Close()
 
 }
