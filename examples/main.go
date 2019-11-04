@@ -10,6 +10,16 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
+// DecodeValue decodes the value from the given kafka message
+func DecodeValue(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
+	return c.Decode(*msg.TopicPartition.Topic, false, msg.Value)
+}
+
+// DecodeKey decodes the key from the given message
+func DecodeKey(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
+	return c.Decode(*msg.TopicPartition.Topic, true, msg.Key)
+}
+
 func main() {
 
 	sigchan := make(chan os.Signal, 1)
@@ -57,7 +67,7 @@ func main() {
 
 			case *kafka.Message:
 
-				native, _, err := avroCodec.DecodeValue(e)
+				native, _, err := DecodeValue(avroCodec, e)
 
 				if err != nil {
 					fmt.Println(err)

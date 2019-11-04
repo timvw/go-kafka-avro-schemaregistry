@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	schemaregistry "github.com/lensesio/schema-registry"
 	"github.com/linkedin/goavro"
 )
@@ -28,22 +27,7 @@ func NewCodec(schemaRegistryURL string, options ...schemaregistry.Option) (codec
 	return
 }
 
-// DecodeValue decodes the value from the given kafka message
-func (c *Codec) DecodeValue(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
-	return c.decode(*msg.TopicPartition.Topic, false, msg.Value)
-}
-
-// DecodeKey decodes the key from the given message
-func (c *Codec) DecodeKey(msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
-	return c.decode(*msg.TopicPartition.Topic, true, msg.Key)
-}
-
-type subjectVersionID struct {
-	subject   string
-	versionID int
-}
-
-func (c *Codec) decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
+func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
 
 	subjectVersion, err := extractSubjectAndVersionFromData(topic, isKey, data)
 	if err != nil {
@@ -56,6 +40,11 @@ func (c *Codec) decode(topic string, isKey bool, data []byte) (native interface{
 	}
 
 	return codec.NativeFromBinary(data[5:])
+}
+
+type subjectVersionID struct {
+	subject   string
+	versionID int
 }
 
 func extractSubjectAndVersionFromData(topic string, isKey bool, data []byte) (key subjectVersionID, err error) {
