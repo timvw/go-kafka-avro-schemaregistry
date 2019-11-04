@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -14,10 +13,7 @@ import (
 )
 
 func getSchemaID(data []byte) int {
-	x := uint32(0)
-	buf := bytes.NewBuffer(data)
-	binary.Read(buf, binary.BigEndian, &x)
-	return int(x)
+	return int(binary.BigEndian.Uint32(data))
 }
 
 func getSubject(topic string) string {
