@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/timvw/gokafkaavro"
 	"os"
 	"os/signal"
 	"syscall"
+
+	schemaregistry "github.com/lensesio/schema-registry"
+	"github.com/timvw/gokafkaavro"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -34,10 +36,13 @@ func main() {
 
 	schemaRegistryURL := "http://localhost:8081"
 
-	avroCodec, err := gokafkaavro.NewCodec(schemaRegistryURL)
+	client, err := schemaregistry.NewClient(schemaRegistryURL)
 	if err != nil {
-		panic(err)
+		return
 	}
+
+	cachedSchemaRegistryClient := gokafkaavro.NewCachedSchemaRegistryClient(client)
+	avroCodec := gokafkaavro.NewCodec(cachedSchemaRegistryClient)
 
 	kafkaConsumer, err := kafka.NewConsumer(kafkaConfig)
 	if err != nil {

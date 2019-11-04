@@ -4,29 +4,21 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	schemaregistry "github.com/lensesio/schema-registry"
 	"github.com/linkedin/goavro"
 )
 
 // Codec decodes kafka avro messages using a schema registry
 type Codec struct {
-	schemaRegistryClient *cachedSchemaRegistryClient
-	codecCache           map[subjectVersionID]*goavro.Codec
+	client     schemaRegistryClient
+	codecCache map[subjectVersionID]*goavro.Codec
 }
 
 // NewCodec returns a new instance of Codec
-func NewCodec(schemaRegistryURL string, options ...schemaregistry.Option) (codec *Codec, err error) {
-
-	client, err := schemaregistry.NewClient(schemaRegistryURL, options...)
-	if(err != nil) {
-		return
-	}
-
-	cachedSchemaRegistryClient := newCachedSchemaRegistryClient(client)
-	codec = &Codec{cachedSchemaRegistryClient, make(map[subjectVersionID]*goavro.Codec)}
-	return
+func NewCodec(client schemaRegistryClient) (*Codec) {
+	return &Codec{client, make(map[subjectVersionID]*goavro.Codec)}
 }
 
+// Decode builds a native go interface from the given avro data
 func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
 
 	subjectVersion, err := extractSubjectAndVersionFromData(topic, isKey, data)
@@ -80,7 +72,7 @@ func (c *Codec) getCodecFor(subjectVersion subjectVersionID) (codec *goavro.Code
 
 	if !ok {
 		var schema string
-		schema, err = c.schemaRegistryClient.getSchemaFor(subjectVersion)
+		schema, err = c.client.GetSchemaFor(subjectVersion)
 		if err != nil {
 			return
 		}
@@ -89,32 +81,6 @@ func (c *Codec) getCodecFor(subjectVersion subjectVersionID) (codec *goavro.Code
 			return
 		}
 		c.codecCache[subjectVersion] = codec
-	}
-
-	return
-}
-
-type cachedSchemaRegistryClient struct {
-	client *schemaregistry.Client
-	cache  map[subjectVersionID]string
-}
-
-func newCachedSchemaRegistryClient(client *schemaregistry.Client) (instance *cachedSchemaRegistryClient) {
-	return &cachedSchemaRegistryClient{client, make(map[subjectVersionID]string)}
-}
-
-func (c *cachedSchemaRegistryClient) getSchemaFor(x subjectVersionID) (schema string, err error) {
-
-	schema, ok := c.cache[x]
-
-	if !ok {
-		var avroSchema schemaregistry.Schema
-		avroSchema, err = c.client.GetSchemaBySubject(x.subject, x.versionID)
-		if err != nil {
-			return
-		}
-		schema = avroSchema.Schema
-		c.cache[x] = schema
 	}
 
 	return
