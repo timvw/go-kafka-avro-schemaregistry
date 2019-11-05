@@ -8,7 +8,6 @@ import (
 
 	schemaregistry "github.com/lensesio/schema-registry"
 	"github.com/timvw/gokafkaavro"
-
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
