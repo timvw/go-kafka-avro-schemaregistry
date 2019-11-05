@@ -12,14 +12,25 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-// DecodeValue decodes the value from the given kafka message
-func DecodeValue(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
-	return c.Decode(*msg.TopicPartition.Topic, false, msg.Value)
+// ConfluentAvroCodec is a wrapper around gokafkaavro.Codec with utility functions to Decode key/value from a kafka.Message
+type ConfluentAvroCodec gokafkaavro.Codec
+
+// DecodeValue returns a native datum value for the binary encoded byte slice in the message.Value field
+// in accordance with the Avro schema attached to the data
+// [wire-format](https://docs.confluent.io/current/schema-registry/serializer-formatter.html#wire-format).
+// On success, it returns the decoded datum and a nil error value.
+// On error, it returns nil for the datum value and the error message.
+func (c *ConfluentAvroCodec) DecodeValue(msg *kafka.Message) (native interface{}, err error) {
+	return (*gokafkaavro.Codec)(c).Decode(*msg.TopicPartition.Topic, false, msg.Value)
 }
 
-// DecodeKey decodes the key from the given message
-func DecodeKey(c *gokafkaavro.Codec, msg *kafka.Message) (native interface{}, newBuf []byte, err error) {
-	return c.Decode(*msg.TopicPartition.Topic, true, msg.Key)
+// DecodeKey returns a native datum value for the binary encoded byte slice in the message.Key field
+// in accordance with the Avro schema attached to the data
+// [wire-format](https://docs.confluent.io/current/schema-registry/serializer-formatter.html#wire-format).
+// On success, it returns the decoded datum and a nil error value.
+// On error, it returns nil for the datum value and the error message.
+func (c *ConfluentAvroCodec) DecodeKey(msg *kafka.Message) (native interface{}, err error) {
+	return (*gokafkaavro.Codec)(c).Decode(*msg.TopicPartition.Topic, true, msg.Key)
 }
 
 func main() {
@@ -43,6 +54,7 @@ func main() {
 
 	cachedSchemaRegistryClient := gokafkaavro.NewCachedSchemaRegistryClient(client)
 	avroCodec := gokafkaavro.NewCodec(cachedSchemaRegistryClient)
+	confluentAvroCodec := (*ConfluentAvroCodec)(avroCodec)
 
 	kafkaConsumer, err := kafka.NewConsumer(kafkaConfig)
 	if err != nil {
@@ -72,7 +84,7 @@ func main() {
 
 			case *kafka.Message:
 
-				native, _, err := DecodeValue(avroCodec, e)
+				native, err := confluentAvroCodec.DecodeValue(e)
 
 				if err != nil {
 					fmt.Println(err)

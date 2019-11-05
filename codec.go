@@ -19,8 +19,12 @@ func NewCodec(client schemaRegistryClient) (*Codec) {
 	return &Codec{client, make(map[subjectVersionID]*goavro.Codec), getTopicNameStrategy}
 }
 
-// Decode builds a native go interface from the given avro data
-func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{}, newBuf []byte, err error) {
+// Decode returns a native datum value for the binary encoded byte slice
+// in accordance with the Avro schema attached to the data
+// [wire-format](https://docs.confluent.io/current/schema-registry/serializer-formatter.html#wire-format).
+// On success, it returns the decoded datum and a nil error value.
+// On error, it returns nil for the datum value and the error message.
+func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{}, err error) {
 
 	subjectVersion, err := extractSubjectAndVersionFromData(topic, isKey, data)
 	if err != nil {
@@ -32,7 +36,8 @@ func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{
 		return
 	}
 
-	return codec.NativeFromBinary(data[5:])
+	native, _, err = codec.NativeFromBinary(data[5:])
+	return
 }
 
 // SubjectNameStrategy represents the actual method to resolve a subject name
