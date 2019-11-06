@@ -5,6 +5,8 @@ kafkaavro is a go library that decodes Kafka Avro data.
 
 ## Description
 
+* This library is not production-grade, battle-tested, but nothing more than a learning experiment for me :-)
+
 * Leverages [schema-registry](https://github.com/lensesio/schema-registry) client and [goavro](https://github.com/linkedin/goavro) 
 to decode binary Avro data into native go data.
  
