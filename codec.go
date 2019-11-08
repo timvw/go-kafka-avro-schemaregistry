@@ -40,6 +40,31 @@ func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{
 	return
 }
 
+func (c *Codec) Encode(topic string, isKey bool, native interface{}) (data []byte, err error) {
+
+	// what do we need here???
+	// how do we get the subjectVersion??? ->
+
+	subjectVersionID := subjectVersionID{}
+
+	codec, err := c.getCodecFor(subjectVersionID)
+	if err != nil {
+		return
+	}
+
+	rawData, err := codec.BinaryFromNative(nil, native)
+	if err != nil {
+		return
+	}
+
+	magicByte := []byte{0}
+	version := []byte{0, 0, 0, 1 }
+
+	data = append(append(magicByte, version...), rawData...)
+
+	return
+}
+
 // SubjectNameStrategy represents the actual method to resolve a subject name
 type SubjectNameStrategy interface {
 	GetSubjectName(topic string, isKey bool, data []byte)
@@ -75,6 +100,12 @@ func getTopicNameStrategy(topic string, isKey bool) (subject string) {
 
 func getSchemaID(data []byte) int {
 	return int(binary.BigEndian.Uint32(data))
+}
+
+func bytesForSchemaID(schemaID int) (data []byte) {
+	data = make([]byte, 4)
+	binary.BigEndian.PutUint32(data, uint32(schemaID))
+	return
 }
 
 func (c *Codec) getCodecFor(subjectVersion subjectVersionID) (codec *goavro.Codec, err error) {

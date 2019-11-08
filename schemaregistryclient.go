@@ -66,3 +66,25 @@ func (c *CachedSchemaRegistryClient) GetSchemaFor(x subjectVersionID) (schema st
 
 	return
 }
+
+// GetSchemaFor returns the subject/version for the given schema
+func (c *CachedSchemaRegistryClient) GetSubjectVersionID(schema string) (x subjectVersionID, err error) {
+
+	//c.client.IsRegistered()
+
+	/*
+	schema, ok := c.cache[x]
+
+	if !ok {
+		var avroSchema schemaregistry.Schema
+		avroSchema, err = c.client.GetSchemaBySubject(x.subject, x.versionID)
+		if err != nil {
+			return
+		}
+		schema = avroSchema.Schema
+		c.cache[x] = schema
+	}
+	 */
+
+	return
+}
