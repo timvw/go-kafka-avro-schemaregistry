@@ -40,27 +40,31 @@ func (c *Codec) Decode(topic string, isKey bool, data []byte) (native interface{
 	return
 }
 
-func (c *Codec) Encode(topic string, isKey bool, native interface{}) (data []byte, err error) {
+func (c *Codec) Encode(topic string, isKey bool, schema string, native interface{}) (data []byte, err error) {
 
-	// what do we need here???
-	// how do we get the subjectVersion??? ->
+	subject := getTopicNameStrategy(topic, isKey)
+	versionID, err := c.client.GetVersionFor(subject, schema)
 
-	subjectVersionID := subjectVersionID{}
+	if err != nil {
+		return
+	}
+
+	subjectVersionID := subjectVersionID{ subject,versionID}
 
 	codec, err := c.getCodecFor(subjectVersionID)
 	if err != nil {
 		return
 	}
 
-	rawData, err := codec.BinaryFromNative(nil, native)
+	magicByte := []byte{0}
+	versionBytes := bytesForSchemaID(subjectVersionID.versionID)
+
+	dataBytes, err := codec.BinaryFromNative(nil, native)
 	if err != nil {
 		return
 	}
 
-	magicByte := []byte{0}
-	version := []byte{0, 0, 0, 1 }
-
-	data = append(append(magicByte, version...), rawData...)
+	data = append(append(magicByte, versionBytes...), dataBytes...)
 
 	return
 }

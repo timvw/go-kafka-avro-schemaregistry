@@ -1,6 +1,7 @@
 package gokafkaavro
 
 import (
+	"errors"
 	"fmt"
 	schemaregistry "github.com/lensesio/schema-registry"
 )
@@ -8,34 +9,8 @@ import (
 // schemaRegistryClient represents a client to a schema registry server
 type schemaRegistryClient interface {
 	GetSchemaFor(x subjectVersionID) (schema string, err error)
-}
-
-// MockSchemaRegistryClient is a fake schemaregistryclient for testing purposes
-type MockSchemaRegistryClient struct {
-	cache  map[subjectVersionID]string
-}
-
-// NewMockSchemaRegistryClient returns a new instance of a MockSchemaRegistryClient
-func NewMockSchemaRegistryClient(client *schemaregistry.Client) (instance *MockSchemaRegistryClient) {
-	return &MockSchemaRegistryClient{make(map[subjectVersionID]string)}
-}
-
-// GetSchemaFor returns the schema for the given subject/version
-func (c *MockSchemaRegistryClient) GetSchemaFor(x subjectVersionID) (schema string, err error) {
-
-	schema, ok := c.cache[x]
-
-	if !ok {
-		err = fmt.Errorf("Could not find entry for %v", x)
-	}
-
-	return
-}
-
-// Register add a schema entry for the given subject/version
-func (c *MockSchemaRegistryClient) Register(subject string, versionID int, schema string) {
-	key := subjectVersionID{subject, versionID}
-	c.cache[key] = schema
+	GetVersionFor(subject string, schema string) (versionID int, err error)
+	//Register(subject string, schema string) (versionID int, err error)
 }
 
 // CachedSchemaRegistryClient is an real schema registry client which uses a cache for lookups
@@ -67,24 +42,20 @@ func (c *CachedSchemaRegistryClient) GetSchemaFor(x subjectVersionID) (schema st
 	return
 }
 
-// GetSchemaFor returns the subject/version for the given schema
-func (c *CachedSchemaRegistryClient) GetSubjectVersionID(schema string) (x subjectVersionID, err error) {
+// GetVersionFor returns the version for the given subject and schema
+func (c *CachedSchemaRegistryClient) GetVersionFor(subject string, schema string) (versionID int, err error) {
 
-	//c.client.IsRegistered()
+	isRegistered, fetchedSchema, err := c.client.IsRegistered(subject, schema)
 
-	/*
-	schema, ok := c.cache[x]
-
-	if !ok {
-		var avroSchema schemaregistry.Schema
-		avroSchema, err = c.client.GetSchemaBySubject(x.subject, x.versionID)
-		if err != nil {
-			return
-		}
-		schema = avroSchema.Schema
-		c.cache[x] = schema
+	if err != nil {
+		return
 	}
-	 */
 
+	if !isRegistered {
+		err = errors.New(fmt.Sprintf("the given schema is not registered for the subject %v", subject))
+		return
+	}
+
+	versionID = fetchedSchema.Version
 	return
 }
