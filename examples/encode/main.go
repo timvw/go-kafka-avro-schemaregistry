@@ -57,7 +57,7 @@ func main() {
 	}
 
 	nativeData := map[string]interface{}{
-		"f1": "blahblah",
+		"f1": "blahblah. this seems to work as expeccted",
 	}
 
 	value, err := encoder.Encode(nativeData)
