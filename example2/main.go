@@ -37,7 +37,7 @@ func main() {
 			"type":"record",
 			"name":"myrecord",
 			"fields":[
-				{"name":"f1x","type":"string"}
+				{"name":"f1","type":"string"}
 			]
 		}`
 
@@ -48,19 +48,19 @@ func main() {
 		return
 	}
 
-	cachedSchemaRegistryClient := gokafkaavro.NewCachedSchemaRegistryClient(client)
-	avroCodec := gokafkaavro.NewCodec(cachedSchemaRegistryClient)
+	subjectNameStrategy := gokafkaavro.TopicNameStrategy{}
+	subjectName := subjectNameStrategy.GetSubjectName(topic, false)
+
+	encoder, err := gokafkaavro.NewEncoder(*client, true, subjectName, schema)
+	if err != nil {
+		fmt.Printf("failed to create encoder, %v", err)
+	}
 
 	nativeData := map[string]interface{}{
 		"f1": "blahblah",
 	}
 
-
-	v, err := cachedSchemaRegistryClient.Register("test-value", schema)
-	fmt.Printf("registered the schema as version %v", v)
-
-	value, err := avroCodec.Encode(topic, false, schema, nativeData)
-
+	value, err := encoder.Encode(nativeData)
 	if err != nil {
 		fmt.Printf("failed to encode, %v", err)
 	}

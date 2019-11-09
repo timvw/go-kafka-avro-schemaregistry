@@ -1,8 +1,19 @@
 package gokafkaavro
 
 import (
+	"encoding/binary"
 	"testing"
 )
+
+func getSchemaID(data []byte) int {
+	return int(binary.BigEndian.Uint32(data))
+}
+
+func bytesForSchemaID(schemaID int) (data []byte) {
+	data = make([]byte, 4)
+	binary.BigEndian.PutUint32(data, uint32(schemaID))
+	return
+}
 
 func TestGetSchemaID(t *testing.T) {
 
