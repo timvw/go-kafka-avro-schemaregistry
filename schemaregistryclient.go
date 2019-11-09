@@ -10,7 +10,7 @@ import (
 type schemaRegistryClient interface {
 	GetSchemaFor(x subjectVersionID) (schema string, err error)
 	GetVersionFor(subject string, schema string) (versionID int, err error)
-	//Register(subject string, schema string) (versionID int, err error)
+	Register(subject string, schema string) (versionID int, err error)
 }
 
 // CachedSchemaRegistryClient is an real schema registry client which uses a cache for lookups
@@ -57,5 +57,11 @@ func (c *CachedSchemaRegistryClient) GetVersionFor(subject string, schema string
 	}
 
 	versionID = fetchedSchema.Version
+	return
+}
+
+// Register returns the versionID for the registered schema
+func (c *CachedSchemaRegistryClient) Register(subject string, schema string) (versionID int, err error) {
+	versionID, err = c.client.RegisterNewSchema(subject, schema)
 	return
 }

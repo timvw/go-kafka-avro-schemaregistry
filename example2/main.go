@@ -37,7 +37,7 @@ func main() {
 			"type":"record",
 			"name":"myrecord",
 			"fields":[
-				{"name":"f1","type":"string"}
+				{"name":"f1x","type":"string"}
 			]
 		}`
 
@@ -54,6 +54,10 @@ func main() {
 	nativeData := map[string]interface{}{
 		"f1": "blahblah",
 	}
+
+
+	v, err := cachedSchemaRegistryClient.Register("test-value", schema)
+	fmt.Printf("registered the schema as version %v", v)
 
 	value, err := avroCodec.Encode(topic, false, schema, nativeData)
 
