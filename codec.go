@@ -4,8 +4,71 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	schemaregistry "github.com/lensesio/schema-registry"
 	"github.com/linkedin/goavro"
 )
+
+type SubjectName = string
+type AvroSchema = string
+type SubjectVersion = int
+
+type SubjectNameStrategy interface {
+	GetSubjectName(topic string, isKey bool)(subjectName SubjectName)
+}
+
+type Decoder struct {
+	client schemaregistry.Client
+}
+
+type Encoder struct {
+	subjectVersion SubjectVersion
+	codec goavro.Codec
+}
+
+func NewEncoder(client schemaregistry.Client, autoRegister bool, subjectName SubjectName, avroSchema AvroSchema)(encoder Encoder, err error) {
+
+	var subjectVersion SubjectVersion
+
+	if(autoRegister) {
+
+		subjectVersion, err = client.RegisterNewSchema(subjectName, avroSchema)
+
+		if err != nil {
+			return
+		}
+	} else {
+		isRegistered, schema, clientErr := client.IsRegistered(subjectName, avroSchema)
+
+		if clientErr != nil {
+			err = clientErr
+			return
+		}
+
+		if !isRegistered {
+			err = errors.New(fmt.Sprintf("There is no registration on subject %v for schema %v", subjectName, avroSchema))
+			return
+		}
+
+		subjectVersion = schema.Version
+	}
+
+	codec, codecErr := goavro.NewCodec(avroSchema)
+
+	if codecErr != nil {
+		err = codecErr
+		return
+	}
+
+	encoder = Encoder{ subjectVersion, *codec}
+
+	return
+}
+
+func (e Encoder) Encode(native interface{})(avroBytes []byte, err error) {
+	avroBytes, err = e.codec.BinaryFromNative(nil, native)
+	return
+}
+
 
 // Codec decodes kafka avro messages using a schema registry
 type Codec struct {
@@ -69,10 +132,6 @@ func (c *Codec) Encode(topic string, isKey bool, schema string, native interface
 	return
 }
 
-// SubjectNameStrategy represents the actual method to resolve a subject name
-type SubjectNameStrategy interface {
-	GetSubjectName(topic string, isKey bool, data []byte)
-}
 
 type subjectVersionID struct {
 	subject   string
