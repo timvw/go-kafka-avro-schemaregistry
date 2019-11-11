@@ -1,4 +1,4 @@
-package gokafkaavro
+package kafkaavro
 
 import (
 	"encoding/binary"

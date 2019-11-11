@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	schemaregistry "github.com/lensesio/schema-registry"
-	"github.com/timvw/gokafkaavro"
+	"github.com/timvw/kafkaavro"
 )
 
 func main() {
@@ -48,10 +48,10 @@ func main() {
 		return
 	}
 
-	subjectNameStrategy := gokafkaavro.TopicNameStrategy{}
+	subjectNameStrategy := kafkaavro.TopicNameStrategy{}
 	subjectName := subjectNameStrategy.GetSubjectName(topic, false)
 
-	encoder, err := gokafkaavro.NewEncoder(*client, true, subjectName, schema)
+	encoder, err := kafkaavro.NewEncoder(*client, true, subjectName, schema)
 	if err != nil {
 		fmt.Printf("failed to create encoder, %v", err)
 	}

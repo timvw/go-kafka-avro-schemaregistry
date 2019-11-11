@@ -7,7 +7,7 @@ import (
 	"syscall"
 
 	schemaregistry "github.com/lensesio/schema-registry"
-	"github.com/timvw/gokafkaavro"
+	"github.com/timvw/kafkaavro"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
@@ -32,10 +32,10 @@ func main() {
 
 	topic := "test"
 
-	subjectNameStrategy := gokafkaavro.TopicNameStrategy{}
+	subjectNameStrategy := kafkaavro.TopicNameStrategy{}
 	subjectName := subjectNameStrategy.GetSubjectName(topic, false)
 
-	valueDecoder, err := gokafkaavro.NewDecoder(*client, subjectName)
+	valueDecoder, err := kafkaavro.NewDecoder(*client, subjectName)
 	if err != nil {
 		panic(err)
 	}
